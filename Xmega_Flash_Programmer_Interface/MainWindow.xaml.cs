@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,25 @@ namespace Xmega_Flash_Programmer_Interface
         public MainWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => Initialze();
         }
+
+
+
+        private void Initialze()
+        {
+            LoadComPorts();
+        }
+
+        private void LoadComPorts()
+        {
+
+            ComPortsCombo.Items.Clear();
+
+            SerialPort.GetPortNames()
+                .ToList()
+                .ForEach((p) => ComPortsCombo.Items.Add(p));
+        }
+
     }
 }

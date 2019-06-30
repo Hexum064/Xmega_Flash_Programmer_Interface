@@ -5,8 +5,61 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Xmega_Flash_Programmer_Interface"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Flash Programmer UI (Disconnected)" Height="450" Width="800">
     <Grid>
-        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+
+        <ComboBox x:Name="ComPortsCombo" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,2"/>
+
+        <Button x:Name="ConnectButton" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Connect"  Margin="4,2"/>
+
+        <TextBlock x:Name="ChipIdTextBlock" Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Center"  Margin="4,2">
+            <Run x:Name="IdTitleRun" Text="ID: "/>
+            <Run x:Name="IdRun"/>
+            <Run x:Name="MemTypeTitleRun" Text=" Type: "/>
+            <Run x:Name="MemTypeRun"/>
+            <Run x:Name="MemSizeTitleRun" Text=" Size: "/>
+            <Run x:Name="MemSizeRun"/>
+        </TextBlock>
+
+        <TextBlock x:Name="MessageTextBlock" Grid.Row="1" Grid.Column="0" Text="Message:"  Margin="4,2"/>
+        <TextBlock x:Name="CharsLeftTextBlock" Grid.Row="1" Grid.Column="1" Margin="4,2" Foreground="DarkGray">
+            <Run x:Name="CharsLeftTitleRun" Text="Chars Left: "/>
+            <Run x:Name="CharsLeftRun" />
+        </TextBlock>
+
+        <TextBox x:Name="MessageTextBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Height="50" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="4,2"/>
+
+        <Button x:Name="ReadTextButton" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Text"  Margin="4,2"/>
+        <Button x:Name="WriteTextButton" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Text"  Margin="4,2"/>
+
+        <TextBlock x:Name="FilesTextBlock" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Center"   Margin="4,2">
+            <Run x:Name="FileCountTitleRun" Text="Files: "/>
+            <Run x:Name="FileCountRun"/>
+            <Run x:Name="FileSizeTitleRun" Text=" Size: "/>
+            <Run x:Name="FileSizeRun"/>
+        </TextBlock>
+                   
+
+        <Button x:Name="AddFileButton" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Add File"  Margin="4,2"/>
+
+        <ListBox x:Name="FilesList" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="4,2"/>
+        <Button x:Name="ReadFileButton" Grid.Row="4" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Files"  Margin="4,2"/>
+        <Button x:Name="WriteWriteButton" Grid.Row="4" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Files"  Margin="4,2"/>
+
     </Grid>
 </Window>
