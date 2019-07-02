@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Collections.ObjectModel;
 using System.IO;
 
+
 namespace Xmega_Flash_Programmer_Interface
 {
     /// <summary>
@@ -48,6 +49,7 @@ namespace Xmega_Flash_Programmer_Interface
         private int _bytesRead = 0;
         private int _dataLength = 0;
         private List<byte> _data = new List<byte>();
+        private System.Windows.Forms.OpenFileDialog _fileDialog = new System.Windows.Forms.OpenFileDialog();
 
         public MainWindow()
         {
@@ -63,10 +65,15 @@ namespace Xmega_Flash_Programmer_Interface
 
         private void Initialze()
         {
+            _fileDialog.Filter = "MIDI files (*.mid)|*.mid|All files (*.*)|*.*";
+            _fileDialog.Multiselect = true;
+            _fileDialog.Title = "Select MIDI files to load to flash";
+            _fileDialog.InitialDirectory = Environment.ExpandEnvironmentVariables("%userprofile%\\documents");
             _dispatcher = Dispatcher.CurrentDispatcher;
             LoadComPorts(SerialPort.GetPortNames().ToList());
             //_comPortsTimer.Enabled = true;
             CharsLeftRun.Text = MAX_MESSAGE_CHARS.ToString();
+            UpdateFilesMetrics();
         }
 
         private void LoadComPorts(List<string> ports)
@@ -129,14 +136,90 @@ namespace Xmega_Flash_Programmer_Interface
             }
         }
 
-        private void _port_PinChanged(object sender, SerialPinChangedEventArgs e)
-        {
-            Console.WriteLine(_port.ReadExisting());
-        }
+        //private void _port_PinChanged(object sender, SerialPinChangedEventArgs e)
+        //{
+        //    Console.WriteLine(_port.ReadExisting());
+        //}
 
         private bool IsConnected
         {
             get { return _port != null && _port.IsOpen; }
+        }
+
+        private int GetDataSizeInBytes()
+        {
+            return Files.Sum((f) => f.ByteCount + 2) + (Files.Count * 4) + 2; //+ 2 in Sum is for the 16bits that hold the length of the file name, + 2 in the total is for the 16bits that hold the number of files.
+        }
+
+        private void UpdateFilesMetrics()
+        {
+            _dispatcher.Invoke(() =>
+            {
+                FileSizeRun.Text = GetDataSizeInBytes().ToString() + " bytes";
+                FileCountRun.Text = Files.Count.ToString();
+            });
+        }
+
+        private List<byte> BuildDataBuffer()
+        {
+            int size = GetDataSizeInBytes();
+            List<byte> data = new List<byte>(size + 5); //+ 5 to hold the 32 bit number that holds the size of the data itself, including lookup table and eventually the command byte
+
+            //Set the first 4 bytes to the total size
+            data.AddRange(Get32BitBytes((uint)size));
+
+            //Set the next two bytes to the number of files
+            data.AddRange(Get16BitBytes((uint)Files.Count));
+
+            //First run through will add the file sizes
+            //Each calculation is a 32bit number that holds the total size of the MIDI file bytes + the file name + a 2 byte number to hold the lenght of the name
+            Files
+                .ToList()
+                .ForEach((f) => data.AddRange(Get32BitBytes((uint)(f.ByteCount + 2)))); //+ 2 is for the 16bits that hold the length of the file name
+
+            //Now add the file name lenght, file name, and file bytes
+            Files
+            .ToList()
+            .ForEach((f) =>
+            {
+                data.AddRange(Get16BitBytes((uint)f.FileName.Length));
+                data.AddRange(Encoding.UTF8.GetBytes(f.FileName));
+                data.AddRange(f.FileBytes);
+
+            });
+
+            return data;
+        }
+
+        private List<MidiFileModel> BuildFilesCollection(byte[] data)
+        {
+            int count;
+            int offset = 0; 
+            int len;
+            List<MidiFileModel> files = new List<MidiFileModel>();
+            if (data == null)
+            {
+                return new List<MidiFileModel>();
+            }
+
+            count = (data[0] << 8) + data[1];
+            offset = 2 + (4 * count); //Set the offset to the first location after the lookup table (4 bytes per entry) + 2 for the file count bytes;
+            for (int i = 0; i < count; i++)
+            {
+                //First get the length of the file
+                len = (data[(i * 4) + 2] << 24) + (data[(i * 4) + 3] << 16) + (data[(i * 4) + 4] << 8) + data[(i * 4) + 5];
+                files.Add(BuildFileModelFromData(data, offset, len));
+                offset += len;
+            }
+
+            return files;
+        }
+
+        private MidiFileModel BuildFileModelFromData(byte[] data, int offset, int len)
+        {
+            int nameLen = (data[offset] << 8) + data[offset + 1];
+            string name = Encoding.UTF8.GetString(data, offset + 2, nameLen);
+            return new MidiFileModel(name, data.Skip(offset + 2 + nameLen).Take(len - 2 - nameLen));
         }
 
         #region Events
@@ -178,6 +261,40 @@ namespace Xmega_Flash_Programmer_Interface
                         _lastCmd = 0;
                         break;
                     case RX_READ_DATA:
+                        bytes = new byte[_port.BytesToRead];
+                        _bytesRead += bytes.Length;
+                        // Debug.WriteLine(_port.ReadExisting());
+
+                        _port.Read(bytes, 0, bytes.Length);
+
+                        if (_bytesRead > 3 && _dataLength == 0)
+                        {
+                            _dataLength = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+                            Debug.WriteLine($"Data Len: {_dataLength}");
+                            _data.Clear();
+
+
+                        }
+                        else
+                        {
+                            _data.AddRange(bytes);
+                        }
+
+                        if (_dataLength + 4 <= _bytesRead)
+                        {
+                            //TODO: Convert bytes to Files collection
+                            _dispatcher.Invoke(() =>
+                            {
+                                Files.Clear();
+                                BuildFilesCollection(_data.ToArray())
+                                    .ForEach((f) => Files.Add(f));
+                            });
+
+                            UpdateFilesMetrics();
+
+                            _lastCmd = 0;
+                            Debug.WriteLine("Data Read");
+                        }
                         break;
                     case RX_READ_TEXT:
                         bytes = new byte[_port.BytesToRead];
@@ -191,7 +308,7 @@ namespace Xmega_Flash_Programmer_Interface
                             _dataLength = (bytes[0] << 8) + bytes[1];
                             Debug.WriteLine($"Text Len: {_dataLength}");
 
-
+                            _data.Clear();
 
                         }
                         else
@@ -202,7 +319,7 @@ namespace Xmega_Flash_Programmer_Interface
                         if (_dataLength + 2 <= _bytesRead)
                         {
 
-                            _dispatcher.Invoke(() => MessageTextBox.Text = System.Text.Encoding.UTF8.GetString(_data.ToArray(), 0, _data.Count));
+                            _dispatcher.Invoke(() => MessageTextBox.Text = Encoding.UTF8.GetString(_data.ToArray(), 0, _data.Count));
                             _lastCmd = 0;
                             Debug.WriteLine("Text Read");
                         }
@@ -215,7 +332,7 @@ namespace Xmega_Flash_Programmer_Interface
             {
                 MessageBox.Show($"Exception during last command. \n{exc}");
             }
-           // _lastCmd = 0;
+
         }
 
         private void _comPortsTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -311,7 +428,7 @@ namespace Xmega_Flash_Programmer_Interface
 
             if (sw.ElapsedMilliseconds >= ACTION_TIMEOUT)
             {
-                MessageBox.Show("Time-out while attempting to write message.");
+                System.Windows.MessageBox.Show("Time-out while attempting to write message.");
             }
             else
             {
@@ -321,10 +438,37 @@ namespace Xmega_Flash_Programmer_Interface
 
         private void AddFileButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!IsConnected)
+
+            List<string> badFiles = new List<string>();
+            if (_fileDialog.ShowDialog() == System.Windows.Forms.DialogResult.Cancel)
             {
                 return;
             }
+
+            _fileDialog.FileNames
+                .ToList()
+                .ForEach((f) =>
+                {
+                    MidiFileModel file = new MidiFileModel(System.IO.Path.GetFileName(f), File.ReadAllBytes(f));
+
+                    if (file.FileBytes.Count() < 4 || !Encoding.UTF8.GetString(file.FileBytes.Take(4).ToArray(), 0, 4).Equals("MThd"))
+                    {
+                        badFiles.Add(f);
+                    }
+                    else
+                    {
+                        Files.Add(file);
+                    }
+                });
+
+            if (badFiles.Count > 0)
+            {
+                MessageBox.Show($"The following files were not valid MIDI files (the file did not start with 'MThd')\n\n{string.Join("\n", badFiles)}");
+            }
+
+
+            UpdateFilesMetrics();
+
         }
 
         private void ReadFilesButton_Click(object sender, RoutedEventArgs e)
@@ -333,6 +477,13 @@ namespace Xmega_Flash_Programmer_Interface
             {
                 return;
             }
+
+            ClearBuffers();
+            _data.Clear();
+            _dataLength = 0;
+            _bytesRead = 0;
+            _lastCmd = RX_READ_DATA;
+            _port.Write(new byte[] { _lastCmd }, 0, 1);
         }
 
         private void WriteFilesButton_Click(object sender, RoutedEventArgs e)
@@ -341,6 +492,41 @@ namespace Xmega_Flash_Programmer_Interface
             {
                 return;
             }
+
+            Stopwatch sw = new Stopwatch();
+            List<byte> data;
+
+            if (!IsConnected)
+            {
+                return;
+            }
+
+            ClearBuffers();
+
+            _lastCmd = RX_WRITE_DATA;
+
+            data = BuildDataBuffer();
+            data.Insert(0, _lastCmd);
+
+            _port.Write(data.ToArray(), 0, data.Count);
+
+            //spin wait
+
+            sw.Start();
+
+            while (_lastCmd != 0 && sw.ElapsedMilliseconds < ACTION_TIMEOUT) { }
+
+            sw.Stop();
+
+            if (sw.ElapsedMilliseconds >= ACTION_TIMEOUT * 2) //Double the timeout time because we need to wait for eraseing
+            {
+                System.Windows.MessageBox.Show("Time-out while attempting to write data.");
+            }
+            else
+            {
+                MessageBox.Show("Done writing data.");
+            }
+
         }
 
         private void EraseButton_Click(object sender, RoutedEventArgs e)
@@ -408,6 +594,20 @@ namespace Xmega_Flash_Programmer_Interface
             }
         }
 
+        private void RemoveButton_Click(object sender, RoutedEventArgs e)
+        {
+            MidiFileModel file = (e.Source as Button)?.DataContext as MidiFileModel;
+
+            if (file == null)
+            {
+                return;
+            }
+
+            Files.Remove(file);
+
+            UpdateFilesMetrics();
+        }
+
         #endregion
 
         private void ClearBuffers()
@@ -419,6 +619,35 @@ namespace Xmega_Flash_Programmer_Interface
 
             _port.DiscardInBuffer();
             _port.DiscardOutBuffer();
+        }
+
+        private static void VisualizeFileBytes(MidiFileModel file)
+        {
+            int i;
+
+            for (i = 0; i <  file.FileBytes.Count; i+=16)
+            {
+
+                for(int j = 0; j < 16 && i + j < file.FileBytes.Count; j++)
+                {
+                    Debug.Write(string.Format("{0:x2} ", file.FileBytes[i + j]));
+
+                }
+
+                Debug.Write("\t");
+
+                for (int j = 0; j < 16 && i + j < file.FileBytes.Count; j++)
+                {
+                    Debug.Write(Convert.ToChar(file.FileBytes[i + j]));
+
+                }
+
+                Debug.WriteLine("");
+
+            }
+
+            Debug.WriteLine("");
+
         }
 
         private static byte[] Get16BitBytes(uint num)
@@ -441,5 +670,8 @@ namespace Xmega_Flash_Programmer_Interface
             byte[] data = { Convert.ToByte((num >> 24) & 0xFF), Convert.ToByte((num >> 16) & 0xFF), Convert.ToByte((num >> 8) & 0xFF), Convert.ToByte((num >> 0) & 0xFF) };
             return data;
         }
+
+ 
+
     }
 }
