@@ -197,7 +197,7 @@ namespace Xmega_Flash_Programmer_Interface
             int offset = 0; 
             int len;
             List<MidiFileModel> files = new List<MidiFileModel>();
-            if (data == null)
+            if (data == null || data.Length < 2)
             {
                 return new List<MidiFileModel>();
             }
