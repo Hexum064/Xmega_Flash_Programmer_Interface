@@ -17,15 +17,16 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="3*"/>
         </Grid.RowDefinitions>
 
 
-        <ComboBox x:Name="ComPortsCombo" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,2"/>
+        <ComboBox x:Name="ComPortsCombo" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="4,2" IsEditable="True"/>
 
-        <Button x:Name="ConnectButton" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Connect"  Margin="4,2"/>
+        <Button x:Name="ConnectButton" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Connect"  Margin="4,2" Click="ConnectButton_Click"/>
+        <Button x:Name="EraseButton" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Content="Erase Chip"  Margin="4,2" Click="EraseButton_Click"/>
 
         <TextBlock x:Name="ChipIdTextBlock" Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Center"  Margin="4,2">
             <Run x:Name="IdTitleRun" Text="ID: "/>
@@ -42,10 +43,11 @@
             <Run x:Name="CharsLeftRun" />
         </TextBlock>
 
-        <TextBox x:Name="MessageTextBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Height="50" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="4,2"/>
+        <TextBox x:Name="MessageTextBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"  TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="4,2" TextChanged="MessageTextBox_TextChanged"
+                 PreviewKeyDown="MessageTextBox_PreviewKeyDown"/>
 
-        <Button x:Name="ReadTextButton" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Text"  Margin="4,2"/>
-        <Button x:Name="WriteTextButton" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Text"  Margin="4,2"/>
+        <Button x:Name="ReadTextButton" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Text"  Margin="4,2" Click="ReadTextButton_Click"/>
+        <Button x:Name="WriteTextButton" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Text"  Margin="4,2" Click="WriteTextButton_Click"/>
 
         <TextBlock x:Name="FilesTextBlock" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Center"   Margin="4,2">
             <Run x:Name="FileCountTitleRun" Text="Files: "/>
@@ -55,11 +57,25 @@
         </TextBlock>
                    
 
-        <Button x:Name="AddFileButton" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Add File"  Margin="4,2"/>
+        <Button x:Name="AddFileButton" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Add File"  Margin="4,2" Click="AddFileButton_Click"/>
 
-        <ListBox x:Name="FilesList" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="4,2"/>
-        <Button x:Name="ReadFileButton" Grid.Row="4" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Files"  Margin="4,2"/>
-        <Button x:Name="WriteWriteButton" Grid.Row="4" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Files"  Margin="4,2"/>
+        <ListBox x:Name="FilesList" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="4,2" ItemsSource="{Binding Files}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="40"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding FileName}" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,2"/>
+                        <Button Content="X" CommandParameter="{Binding }" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="4,2"/>
+
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <Button x:Name="ReadFileButton" Grid.Row="4" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Read Files"  Margin="4,2" Click="ReadFilesButton_Click"/>
+        <Button x:Name="WriteWriteButton" Grid.Row="4" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Write Files"  Margin="4,2" Click="WriteFilesButton_Click"/>
 
     </Grid>
 </Window>
